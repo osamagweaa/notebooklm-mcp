@@ -457,6 +457,20 @@ Add to your PATH:
 
 ---
 
+### "NotImplementedError" when running `notebooklm login` (Windows)
+
+**Cause**: On some Windows setups, Playwright receives an asyncio `SelectorEventLoop`, which cannot spawn the browser subprocess.
+
+**Solution**: Run the login through the included wrapper, which forces the correct Proactor event loop:
+
+```powershell
+uv run python win_login.py
+```
+
+The wrapper accepts any CLI command, e.g. `uv run python win_login.py list`.
+
+---
+
 ### "NotebookLM client not initialized"
 
 **Cause**: Server started before authentication was complete.
