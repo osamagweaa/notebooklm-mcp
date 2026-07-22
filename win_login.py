@@ -15,6 +15,10 @@ import sys
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    # Playwright calls asyncio.new_event_loop() directly; guarantee it gets a
+    # ProactorEventLoop even if some other import resets the policy later.
+    asyncio.new_event_loop = asyncio.ProactorEventLoop
+    print(f"[win_login] event loop: {type(asyncio.new_event_loop()).__name__}")
 
 sys.argv = ["notebooklm"] + (sys.argv[1:] or ["login"])
 
