@@ -1,9 +1,21 @@
 """Windows-safe wrapper for the NotebookLM CLI.
 
-On some Windows setups the asyncio event loop Playwright receives is a
-SelectorEventLoop, which cannot spawn subprocesses and makes
-`notebooklm login` crash with NotImplementedError. Forcing the Proactor
-policy before Playwright starts avoids that.
+Why this exists
+---------------
+`notebooklm/notebooklm_cli.py` forces the selector event loop at import time
+on Windows:
+
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+That works around an unrelated IOCP hang, but a SelectorEventLoop cannot spawn
+subprocesses on Windows, so `notebooklm login` always dies with
+NotImplementedError when Playwright tries to launch the browser.
+
+The import order below is the whole fix: import the CLI module first (letting it
+set the selector policy), then put the Proactor policy back before running any
+command. Setting the policy *before* the import does nothing — the import
+silently overwrites it.
 
 Usage:
     uv run python win_login.py            # runs `notebooklm login`
@@ -13,15 +25,12 @@ Usage:
 import asyncio
 import sys
 
+from notebooklm import notebooklm_cli
+
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-    # Playwright calls asyncio.new_event_loop() directly; guarantee it gets a
-    # ProactorEventLoop even if some other import resets the policy later.
-    asyncio.new_event_loop = asyncio.ProactorEventLoop
-    print(f"[win_login] event loop: {type(asyncio.new_event_loop()).__name__}")
+    print(f"[win_login] policy: {type(asyncio.get_event_loop_policy()).__name__}")
 
 sys.argv = ["notebooklm"] + (sys.argv[1:] or ["login"])
 
-from notebooklm.notebooklm_cli import main
-
-main()
+notebooklm_cli.main()

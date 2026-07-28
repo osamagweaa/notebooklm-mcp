@@ -459,15 +459,21 @@ Add to your PATH:
 
 ### "NotImplementedError" when running `notebooklm login` (Windows)
 
-**Cause**: On some Windows setups, Playwright receives an asyncio `SelectorEventLoop`, which cannot spawn the browser subprocess.
+**Cause**: `notebooklm_cli.py` sets `WindowsSelectorEventLoopPolicy` at import time to work around an unrelated IOCP hang. A `SelectorEventLoop` cannot spawn subprocesses on Windows, so Playwright's browser launch fails with `NotImplementedError` in `_make_subprocess_transport`.
 
-**Solution**: Run the login through the included wrapper, which forces the correct Proactor event loop:
+**Solution**: Run the login through the included wrapper, which restores the Proactor policy *after* importing the CLI (setting it beforehand does nothing — the import overwrites it):
 
 ```powershell
 uv run python win_login.py
 ```
 
 The wrapper accepts any CLI command, e.g. `uv run python win_login.py list`.
+
+If that still fails, `login_windows.py` performs the same login through Playwright's async API on an explicitly constructed `ProactorEventLoop`, bypassing the CLI import entirely:
+
+```powershell
+uv run python login_windows.py
+```
 
 ---
 
